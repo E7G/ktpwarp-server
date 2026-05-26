@@ -4,15 +4,26 @@ on:
   push:
   workflow_dispatch:
 
+# 避免 CI 回推 tag 时再次触发一轮构建
+concurrency:
+  group: release-fpk
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
 jobs:
   build-and-release:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      !startsWith(github.ref, 'refs/tags/') ||
+      github.event.pusher.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -35,20 +46,28 @@ jobs:
         id: meta
         run: |
           pkg="$(node -p "require('./package.json').version")"
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            ver="${GITHUB_REF#refs/tags/}"
-            echo "name=ktpWarp Server ${ver}" >> "$GITHUB_OUTPUT"
-            echo "body=Release ${ver} (${GITHUB_SHA::7})" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=ktpWarp Server v${pkg} (latest)" >> "$GITHUB_OUTPUT"
-            echo "body=Latest build from \`${GITHUB_REF_NAME}\` (${GITHUB_SHA::7}). Push a \`v*\` tag to pin a versioned release name." >> "$GITHUB_OUTPUT"
+          tag="v${pkg}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
           fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "name=ktpWarp Server ${tag}" >> "$GITHUB_OUTPUT"
+          echo "body=Build \`${GITHUB_SHA::7}\` from \`${GITHUB_REF_NAME}\`" >> "$GITHUB_OUTPUT"
 
-      # Single rolling release (tag: latest). Push v* updates the displayed version only.
+      - name: Move version tag to this commit
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          !startsWith(github.ref, 'refs/tags/')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa "${{ steps.meta.outputs.tag }}" -m "CI release ${{ github.sha }}"
+          git push origin "${{ steps.meta.outputs.tag }}" --force
+
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: latest
+          tag: ${{ steps.meta.outputs.tag }}
           name: ${{ steps.meta.outputs.name }}
           body: ${{ steps.meta.outputs.body }}
           allowUpdates: true
