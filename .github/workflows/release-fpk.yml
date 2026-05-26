@@ -2,29 +2,18 @@ name: Release FPK
 
 on:
   push:
+    branches: [master, main]
   workflow_dispatch:
-
-# 避免 CI 回推 tag 时再次触发一轮构建
-concurrency:
-  group: release-fpk
-  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
   build-and-release:
-    # 跳过 CI 自己 force-push 版本 tag 时触发的二次运行
-    if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.ref, 'refs/tags/') ||
-      github.event.pusher.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -46,33 +35,24 @@ jobs:
       - name: Release metadata
         id: meta
         run: |
-          pkg="$(node -p "require('./package.json').version")"
-          tag="v${pkg}"
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            tag="${GITHUB_REF#refs/tags/}"
-          fi
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "name=ktpWarp Server ${tag}" >> "$GITHUB_OUTPUT"
-          echo "body=Build \`${GITHUB_SHA::7}\` from \`${GITHUB_REF_NAME}\`" >> "$GITHUB_OUTPUT"
-
-      - name: Move version tag to this commit
-        if: >-
-          github.event_name == 'workflow_dispatch' ||
-          !startsWith(github.ref, 'refs/tags/')
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -fa "${{ steps.meta.outputs.tag }}" -m "CI release ${{ github.sha }}"
-          git push origin "${{ steps.meta.outputs.tag }}" --force
+          ver="$(node -p "require('./package.json').version")"
+          echo "tag=v${ver}" >> "$GITHUB_OUTPUT"
+          echo "name=ktpWarp Server v${ver}" >> "$GITHUB_OUTPUT"
 
       - name: Upload to GitHub Release
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag: ${{ steps.meta.outputs.tag }}
+          tag_name: ${{ steps.meta.outputs.tag }}
           name: ${{ steps.meta.outputs.name }}
-          body: ${{ steps.meta.outputs.body }}
-          allowUpdates: true
-          replacesArtifacts: true
-          removeArtifacts: true
-          makeLatest: true
-          artifacts: ktpwarp-server.fpk,ktpwarp-server_all.fpk
+          body: |
+            Build `${{ github.sha }}` on `${{ github.ref_name }}`
+            无需手动打 tag，由 CI 根据 package.json 版本创建/更新 Release。
+          files: |
+            ktpwarp-server.fpk
+            ktpwarp-server_all.fpk
+          draft: false
+          prerelease: true
+          make_latest: true
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
