@@ -9,50 +9,29 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10.5.2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+      - run: bash scripts/build-fpk.sh
 
-      - name: Build fpk
-        run: bash scripts/build-fpk.sh
-
-      - name: Release metadata
-        id: meta
-        run: |
-          ver="$(node -p "require('./package.json').version")"
-          echo "tag=v${ver}" >> "$GITHUB_OUTPUT"
-          echo "name=ktpWarp Server v${ver}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: ${{ steps.meta.outputs.name }}
-          body: |
-            Build `${{ github.sha }}` on `${{ github.ref_name }}`
-            无需手动打 tag，由 CI 根据 package.json 版本创建/更新 Release。
+          tag_name: latest
+          name: latest
           files: |
             ktpwarp-server.fpk
             ktpwarp-server_all.fpk
-          draft: false
-          prerelease: true
           make_latest: true
           overwrite_files: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
