@@ -14,8 +14,9 @@ permissions:
 
 jobs:
   build-and-release:
+    # 跳过 CI 自己 force-push 版本 tag 时触发的二次运行
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name != 'push' ||
       !startsWith(github.ref, 'refs/tags/') ||
       github.event.pusher.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
