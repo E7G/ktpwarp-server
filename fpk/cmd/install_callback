@@ -1,0 +1,45 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=env.sh
+. "${SCRIPT_DIR}/env.sh"
+
+init_trim_env "${SCRIPT_DIR}"
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+NPM_PATH="/var/apps/nodejs_v22/target/bin/npm"
+RUNTIME_CONFIG="${TRIM_PKGVAR}/config.json"
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
+}
+
+SERVER_DIR="$(resolve_server_dir)" || SERVER_DIR=""
+if [ -z "${SERVER_DIR}" ]; then
+  log_msg "server dir not found at install_callback"
+  echo "Warning: server directory not found." > "${TRIM_TEMP_LOGFILE}"
+  exit 0
+fi
+
+log_msg "SERVER_DIR=${SERVER_DIR}"
+
+if [ -f "${SERVER_DIR}/node_modules/winston/package.json" ]; then
+  log_msg "node_modules bundled in fpk, skip npm install"
+else
+  log_msg "Installing npm dependencies..."
+  if ! ensure_node_modules "${SERVER_DIR}" "${NPM_PATH}" >> "${LOG_FILE}" 2>&1; then
+    log_msg "npm install failed"
+    echo "npm install failed, see info.log" > "${TRIM_TEMP_LOGFILE}"
+    tail -n 20 "${LOG_FILE}" >> "${TRIM_TEMP_LOGFILE}" 2>/dev/null || true
+    exit 1
+  fi
+fi
+
+mkdir -p "${TRIM_PKGVAR}"
+if [ ! -f "${RUNTIME_CONFIG}" ] && [ -f "${SERVER_DIR}/config.example.json" ]; then
+  cp -f "${SERVER_DIR}/config.example.json" "${RUNTIME_CONFIG}"
+  log_msg "Created default config: ${RUNTIME_CONFIG}"
+fi
+
+log_msg "install_callback done"
+exit 0

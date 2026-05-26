@@ -1,0 +1,11 @@
+[
+  {
+    "stepTitle": "卸载向导",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "即将卸载 ktpWarp Server。应用数据目录中的 config.json 与日志是否保留，取决于系统卸载选项。"
+      }
+    ]
+  }
+]

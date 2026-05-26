@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ktpWarp 配置</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>ktpWarp Server 配置</h1>
+      <p id="config-path" class="muted"></p>
+    </header>
+
+    <main>
+      <div class="toolbar">
+        <button type="button" id="btn-reload">重新加载</button>
+        <button type="button" id="btn-format">格式化</button>
+        <button type="button" class="primary" id="btn-save">保存配置</button>
+      </div>
+      <p id="status" class="status" aria-live="polite"></p>
+      <textarea id="editor" spellcheck="false" placeholder="加载中…"></textarea>
+      <aside class="help">
+        <p>修改后请点击「保存配置」，然后在应用中心<strong>重启</strong> ktpWarp Server 使签到服务生效。</p>
+        <p>配置页与 WebSocket 共用端口 <code>18451</code>。局域网访问请用 <code>http://NAS的IP:18451/</code>，不能只打开 IP。修改后请重启应用。</p>
+        <p>请勿将含密码的配置文件分享给他人。字段说明见仓库 <code>config.example.json</code>。</p>
+      </aside>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

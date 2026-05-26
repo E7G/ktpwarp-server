@@ -15,6 +15,7 @@ import { 互动答题Events, 签到Events } from "./events";
 import { 签到HistoryType, 签到HistoryResultType } from "./types";
 import { getCurrentClass } from "./util";
 import { LabelledLogger } from "./logger";
+import { attachConfigUi } from "./configUi";
 
 const logger = new LabelledLogger("websocket server");
 
@@ -36,6 +37,8 @@ export async function createWebsocketServer() {
     const http = await import("http");
     server = http.createServer();
   }
+
+  attachConfigUi(server);
 
   const wss = new WebSocketServer({ noServer: true });
 
@@ -217,7 +220,27 @@ export async function createWebsocketServer() {
     }
   });
 
-  server.listen(WEBSOCKET_SERVER_PORT, () => {
-    logger.info(`WebSocket server listening on port ${WEBSOCKET_SERVER_PORT}`);
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      logger.error(
+        `WebSocket port ${WEBSOCKET_SERVER_PORT} is already in use. Change WEBSOCKET_SERVER_PORT in config.json or stop the other process.`,
+      );
+    } else {
+      logger.error(`WebSocket server error: ${err.message}`);
+    }
+    process.exit(1);
+  });
+
+  const listenPort = process.env.KTPWARP_LISTEN_PORT
+    ? Number(process.env.KTPWARP_LISTEN_PORT)
+    : WEBSOCKET_SERVER_PORT;
+
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(listenPort, "0.0.0.0", () => {
+      server.removeListener("error", reject);
+      logger.info(`Listening on 0.0.0.0:${listenPort} (HTTP config UI + WebSocket)`);
+      resolve();
+    });
   });
 }

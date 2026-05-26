@@ -1,0 +1,30 @@
+{
+  ".url": {
+    "ktpwarp-server.Application": {
+      "title": "ktpWarp 配置",
+      "icon": "images/icon_{0}.png",
+      "type": "iframe",
+      "port": "18451",
+      "url": "/",
+      "allUsers": false,
+      "control": {
+        "accessPerm": "editable",
+        "fullUrlPerm": "hidden",
+        "pathPerm": "readonly"
+      }
+    },
+    "ktpwarp-server.WebClient": {
+      "title": "ktpWarp Web 客户端",
+      "icon": "images/icon_{0}.png",
+      "type": "iframe",
+      "port": "18451",
+      "url": "/web/",
+      "allUsers": false,
+      "control": {
+        "accessPerm": "editable",
+        "fullUrlPerm": "hidden",
+        "pathPerm": "readonly"
+      }
+    }
+  }
+}

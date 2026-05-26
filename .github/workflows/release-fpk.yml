@@ -1,0 +1,60 @@
+name: Release FPK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build fpk
+        run: bash scripts/build-fpk.sh
+
+      - name: Release metadata
+        id: meta
+        run: |
+          pkg="$(node -p "require('./package.json').version")"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            ver="${GITHUB_REF#refs/tags/}"
+            echo "name=ktpWarp Server ${ver}" >> "$GITHUB_OUTPUT"
+            echo "body=Release ${ver} (${GITHUB_SHA::7})" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=ktpWarp Server v${pkg} (latest)" >> "$GITHUB_OUTPUT"
+            echo "body=Latest build from \`${GITHUB_REF_NAME}\` (${GITHUB_SHA::7}). Push a \`v*\` tag to pin a versioned release name." >> "$GITHUB_OUTPUT"
+          fi
+
+      # Single rolling release (tag: latest). Push v* updates the displayed version only.
+      - name: Upload to GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest
+          name: ${{ steps.meta.outputs.name }}
+          body: ${{ steps.meta.outputs.body }}
+          allowUpdates: true
+          replacesArtifacts: true
+          removeArtifacts: true
+          makeLatest: true
+          artifacts: ktpwarp-server.fpk,ktpwarp-server_all.fpk

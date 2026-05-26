@@ -1,0 +1,62 @@
+{
+  "CONFIG_VERSION": 2,
+
+  "WEBSOCKET_SERVER_PORT": 18451,
+  "WEBSOCKET_ENABLE_TLS": false,
+  "TLS_CERT_PATH": "/path/to/cert.pem",
+  "TLS_KEY_PATH": "/path/to/key.pem",
+  "WEBSOCKET_SERVER_PATH": "/kfccrazythursdayvme50",
+
+  "ENABLE_TELEGRAM_BOT": false,
+  "TELEGRAM_BOT_TOKEN": "4567890123:ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  "TELEGRAM_CHAT_ID": 1234567890,
+  "TELEGRAM_BOT_PRIVACY_MODE": true,
+  "TELEGRAM_BOT_PRIVACY_MODE_WHITELIST": [9876543210, -1001234567890],
+  "TELEGRAM_BOT_REPLY_INVALID_QRCODE": false,
+  "TELEGRAM_BOT_API_URL": "https://api.telegram.org",
+
+  "USERS": [
+    {
+      "friendlyName": "学生的名字，可以随便设置一个，不需要严格与实际名字一致，这个名字会出现在签到结果的播报中",
+      "username": "ktp0123456789",
+      "password": "password123"
+    },
+    {
+      "friendlyName": "另一个学生",
+      "username": "13800138000",
+      "password": "hunter2"
+    }
+  ],
+
+  "CLASSES": [
+    {
+      "friendlyName": "摸鱼学导论",
+      "classId": "MDAwMDAwMDAwMLOGvZAAAAAAAAAyoQ",
+      "dayOfWeek": 1,
+      "startTime": "8:00",
+      "endTime": "9:50",
+      "latitude": "39.90403",
+      "longitude": "116.40753"
+    },
+    {
+      "friendlyName": "划水学原理",
+      "classId": "MDAwMDAwMDAwMLOGvZBBBBBBBBByoQ",
+      "dayOfWeek": 1,
+      "startTime": "9:51",
+      "endTime": "10:50"
+    }
+  ],
+
+  "DEFAULT_LATITUDE": "31.230416",
+  "DEFAULT_LONGITUDE": "121.473701",
+
+  "签到_CHECK_INTERVAL_SECONDS": 15,
+  "MIN_DELAY_SECONDS": 15,
+  "MAX_DELAY_SECONDS": 45,
+  "FAKE_IP_PREFIX": ["58.32.12.", "103.28.212.", "202.101.31.", "124.74.9."],
+
+  "ENABLE_互动答题_CHECK": false,
+  "互动答题_CHECK_INTERVAL_SECONDS": 15,
+  "互动答题_CHECK_DELAY_SECONDS": 300
+}
+

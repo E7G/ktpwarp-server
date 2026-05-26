@@ -26,21 +26,28 @@ export async function login(username: string, password: string) {
 }
 
 export async function loginAll() {
-  logger.info("Logging in...")
-  
-  while (true) {
-    let tokens = await Promise.all(USERS.map((user) => login(user.username, user.password)));
+  if (USERS.length === 0) {
+    throw new Error("No users configured in config.json (USERS is empty)");
+  }
 
+  logger.info("Logging in...");
+
+  const maxAttempts = 20;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const tokens = await Promise.all(USERS.map((user) => login(user.username, user.password)));
     credentials = tokens.map((token, index) => ({ friendlyName: USERS[index].friendlyName, token }));
 
-    for (const credential of credentials) {
-      if (typeof credential.token === "undefined") {
-        logger.info("At least one login failed, retrying...");
-        continue;
-      } else {
-        logger.info(`${credentials.length} user(s) logged in`);
-        return;
-      }
+    const failed = credentials.filter((c) => typeof c.token === "undefined");
+    if (failed.length === 0) {
+      logger.info(`${credentials.length} user(s) logged in`);
+      return;
     }
+
+    logger.warn(
+      `Login failed for ${failed.length}/${credentials.length} user(s), retry ${attempt}/${maxAttempts} in 15s...`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 15_000));
   }
+
+  throw new Error("Login failed after maximum retries; check USERS in config.json");
 }

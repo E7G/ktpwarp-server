@@ -1,5 +1,13 @@
 import { 签到Events } from "./events";
-import { getAuthenticatedHeaders, getReqtimestamp, getCurrentClass, randomRange, fancyFetch, getDeduplicatedClasses, fakeIp } from "./util";
+import {
+  getAuthenticatedHeaders,
+  getReqtimestamp,
+  getCurrentClass,
+  randomRange,
+  fancyFetch,
+  getDeduplicatedClasses,
+  fakeIp,
+} from "./util";
 import { credentials } from "./auth";
 import { DEFAULT_LATITUDE, DEFAULT_LONGITUDE, MAX_DELAY_SECONDS, MIN_DELAY_SECONDS, 签到_CHECK_INTERVAL_SECONDS } from "./config";
 import { ClassType, CredentialType } from "./types";
@@ -139,7 +147,7 @@ async function process数字签到(class_: ClassType, 签到Id: string) {
     Promise.all(
       credentials.map((credential) => {
         executeNonQrcode签到(credential, 签到Id, "", "", code);
-      })
+      }),
     );
   } catch (e) {
     logger.error(`Error fetching 数字签到 code: ${e}`);
@@ -158,7 +166,7 @@ async function processGps签到(class_: ClassType, 签到Id: string) {
   Promise.all(
     credentials.map((credential) => {
       executeNonQrcode签到(credential, 签到Id, latitude, longitude);
-    })
+    }),
   );
 }
 
@@ -171,7 +179,7 @@ async function process签入签出签到(class_: ClassType, 签到Id: string) {
   Promise.all(
     credentials.map((credential) => {
       executeNonQrcode签到(credential, 签到Id, latitude, longitude);
-    })
+    }),
   );
 }
 
@@ -187,7 +195,7 @@ async function processQrcode签到(ticketid: string, expire: string, sign: strin
   Promise.all(
     credentials.map((credential) => {
       executeQrcode签到(credential, ticketid, expire, sign);
-    })
+    }),
   );
 }
 
@@ -266,3 +274,4 @@ async function executeQrcode签到(credential: CredentialType, ticketid: string,
     qrcode签到Lock = false;
   }
 }
+

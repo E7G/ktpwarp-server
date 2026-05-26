@@ -1,0 +1,224 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=env.sh
+. "${SCRIPT_DIR}/env.sh"
+
+init_trim_env "${SCRIPT_DIR}"
+
+# 与 manifest service_port、app/ui/config 保持一致
+MANIFEST_PORT=18451
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+LOCK_FILE="${TRIM_PKGVAR}/start.lock"
+
+NODE_PATH="/var/apps/nodejs_v22/target/bin/node"
+NPM_PATH="/var/apps/nodejs_v22/target/bin/npm"
+RUNTIME_CONFIG="${TRIM_PKGVAR}/config.json"
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
+}
+
+check_process() {
+  local pid="$1"
+  [ -n "${pid}" ] && ps -p "${pid}" >/dev/null 2>&1
+}
+
+resolve_paths() {
+  SERVER_DIR="$(resolve_server_dir)" || return 1
+  UI_DIR="$(resolve_ui_dir)" || UI_DIR=""
+  WEB_DIR="$(resolve_web_dir)" || WEB_DIR=""
+  ENTRY="${SERVER_DIR}/dist/index.js"
+  export KTPWARP_CONFIG_PATH="${RUNTIME_CONFIG}"
+  export KTPWARP_UI_DIR="${UI_DIR}"
+  export KTPWARP_WEB_DIR="${WEB_DIR}"
+  export KTPWARP_LISTEN_PORT="${MANIFEST_PORT}"
+  return 0
+}
+
+ensure_config() {
+  mkdir -p "${TRIM_PKGVAR}" 2>/dev/null || true
+  if [ -f "${RUNTIME_CONFIG}" ]; then
+    return 0
+  fi
+  if [ -f "${SERVER_DIR}/config.example.json" ]; then
+    cp -f "${SERVER_DIR}/config.example.json" "${RUNTIME_CONFIG}"
+    log_msg "Created default config: ${RUNTIME_CONFIG}"
+    return 0
+  fi
+  echo "Missing config.example.json" > "${TRIM_TEMP_LOGFILE}"
+  return 1
+}
+
+acquire_lock() {
+  if [ -f "${LOCK_FILE}" ]; then
+    local lpid
+    lpid="$(cat "${LOCK_FILE}" 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "${lpid}" ] && check_process "${lpid}"; then
+      log_msg "Start skipped: lock held by PID ${lpid}"
+      return 1
+    fi
+    rm -f "${LOCK_FILE}"
+  fi
+  echo "$$" > "${LOCK_FILE}"
+  return 0
+}
+
+release_lock() {
+  rm -f "${LOCK_FILE}" 2>/dev/null || true
+}
+
+stop_process() {
+  log_msg "Stopping ktpwarp-server..."
+
+  if [ -r "${PID_FILE}" ]; then
+    local pid
+    pid="$(head -n 1 "${PID_FILE}" | tr -d '[:space:]')"
+    if check_process "${pid}"; then
+      kill -TERM "${pid}" >/dev/null 2>&1 || true
+      local count=0
+      while check_process "${pid}" && [ $count -lt 8 ]; do
+        sleep 1
+        count=$((count + 1))
+      done
+      check_process "${pid}" && kill -KILL "${pid}" >/dev/null 2>&1 || true
+    fi
+    rm -f "${PID_FILE}"
+  fi
+
+  kill_ktpwarp_processes
+  free_tcp_port "${MANIFEST_PORT}"
+  free_tcp_port "18452"
+  free_tcp_port "11451"
+  free_tcp_port "11452"
+  release_lock
+  log_msg "Stopped"
+  return 0
+}
+
+start_process() {
+  log_msg "========================================="
+  log_msg "Starting ktpwarp-server..."
+  log_msg "TRIM_PKGVAR=${TRIM_PKGVAR}"
+  log_msg "TRIM_APPDEST=${TRIM_APPDEST}"
+  log_msg "========================================="
+
+  if ! acquire_lock; then
+    return 0
+  fi
+
+  if [ ! -x "${NODE_PATH}" ]; then
+    release_lock
+    echo "Node.js not found. Install nodejs_v22." > "${TRIM_TEMP_LOGFILE}"
+    return 1
+  fi
+
+  resolve_paths || {
+    release_lock
+    echo "Server directory not found" > "${TRIM_TEMP_LOGFILE}"
+    return 1
+  }
+
+  log_msg "SERVER_DIR=${SERVER_DIR}"
+  log_msg "ENTRY=${ENTRY}"
+
+  if [ ! -f "${ENTRY}" ]; then
+    release_lock
+    echo "Entry not found: ${ENTRY}" > "${TRIM_TEMP_LOGFILE}"
+    return 1
+  fi
+
+  ensure_config || {
+    release_lock
+    return 1
+  }
+
+  if status; then
+    log_msg "Already running, restarting..."
+    stop_process
+    sleep 2
+    acquire_lock || return 0
+  fi
+
+  if [ ! -f "${SERVER_DIR}/node_modules/winston/package.json" ]; then
+    log_msg "node_modules missing, npm install..."
+    if ! ensure_node_modules "${SERVER_DIR}" "${NPM_PATH}" >> "${LOG_FILE}" 2>&1; then
+      release_lock
+      echo "npm install failed, see info.log" > "${TRIM_TEMP_LOGFILE}"
+      return 1
+    fi
+  fi
+
+  kill_ktpwarp_processes
+  free_tcp_port "${MANIFEST_PORT}"
+  sleep 1
+
+  log_msg "Listen on 0.0.0.0:${MANIFEST_PORT} (KTPWARP_LISTEN_PORT)"
+
+  cd "${SERVER_DIR}" || {
+    release_lock
+    return 1
+  }
+
+  nohup env \
+    TRIM_PKGVAR="${TRIM_PKGVAR}" \
+    TRIM_APPDEST="${TRIM_APPDEST}" \
+    TRIM_APPNAME="${TRIM_APPNAME}" \
+    KTPWARP_CONFIG_PATH="${RUNTIME_CONFIG}" \
+    KTPWARP_UI_DIR="${UI_DIR}" \
+    KTPWARP_WEB_DIR="${WEB_DIR}" \
+    KTPWARP_LISTEN_PORT="${MANIFEST_PORT}" \
+    "${NODE_PATH}" "./dist/index.js" >> "${LOG_FILE}" 2>&1 &
+
+  local pid=$!
+  printf "%s" "${pid}" > "${PID_FILE}"
+
+  sleep 3
+
+  local pid
+  pid="$(head -n 1 "${PID_FILE}" | tr -d '[:space:]')"
+
+  if ! check_process "${pid}"; then
+    log_msg "Process exited early"
+    echo "Failed to start, see info.log" > "${TRIM_TEMP_LOGFILE}"
+    tail -n 25 "${LOG_FILE}" >> "${TRIM_TEMP_LOGFILE}" 2>/dev/null || true
+    rm -f "${PID_FILE}"
+    release_lock
+    return 1
+  fi
+
+  log_msg "Started PID ${pid}"
+  release_lock
+  return 0
+}
+
+status() {
+  if [ -r "${PID_FILE}" ]; then
+    local pid
+    pid="$(head -n 1 "${PID_FILE}" | tr -d '[:space:]')"
+    if check_process "${pid}"; then
+      return 0
+    fi
+    rm -f "${PID_FILE}"
+  fi
+  return 3
+}
+
+case "$1" in
+  start) start_process ;;
+  stop) stop_process ;;
+  status)
+    if status; then exit 0; else exit 3; fi
+    ;;
+  restart)
+    stop_process
+    sleep 2
+    start_process
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 1
+    ;;
+esac

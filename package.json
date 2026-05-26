@@ -4,10 +4,12 @@
   "description": "课堂派自动签到",
   "main": "index.ts",
   "scripts": {
-    "start": "tsc && pm2 start dist/index.js --name ktpwarp-server",
+    "start": "pnpm -s build && pm2 start dist/index.js --name ktpwarp-server",
     "stop": "pm2 stop ktpwarp-server && pm2 delete ktpwarp-server",
-    "build": "tsc",
-    "dev": "nodemon index.ts"
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
+    "dev": "nodemon index.ts",
+    "fpk:build": "powershell -ExecutionPolicy Bypass -File scripts/build-fpk.ps1",
+    "fpk:build:linux": "bash scripts/build-fpk.sh"
   },
   "keywords": [],
   "author": "celesWuff",

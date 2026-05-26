@@ -1,0 +1,13 @@
+#!/bin/bash
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
+}
+
+log_msg "卸载前停止服务..."
+/var/apps/${TRIM_APPNAME}/cmd/main stop >> "${LOG_FILE}" 2>&1 || true
+
+exit 0
+

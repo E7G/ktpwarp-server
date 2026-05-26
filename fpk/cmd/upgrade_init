@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [ -x "/var/apps/${TRIM_APPNAME}/cmd/main" ]; then
+  /var/apps/${TRIM_APPNAME}/cmd/main stop >> "${TRIM_PKGVAR}/info.log" 2>&1 || true
+fi
+
+exit 0

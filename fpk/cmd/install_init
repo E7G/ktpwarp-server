@@ -1,0 +1,27 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=env.sh
+. "${SCRIPT_DIR}/env.sh"
+
+init_trim_env "${SCRIPT_DIR}"
+
+LOG_FILE="${TRIM_PKGVAR}/info.log"
+NODE_PATH="/var/apps/nodejs_v22/target/bin/node"
+NPM_PATH="/var/apps/nodejs_v22/target/bin/npm"
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
+}
+
+if [ ! -x "${NODE_PATH}" ] || [ ! -x "${NPM_PATH}" ]; then
+  log_msg "Node.js or npm not found"
+  echo "Error: Node.js or npm not found, install nodejs_v22 first." > "${TRIM_TEMP_LOGFILE}"
+  exit 1
+fi
+
+export PATH="/var/apps/nodejs_v22/target/bin:$PATH"
+${NPM_PATH} config set registry https://registry.npmmirror.com >> "${LOG_FILE}" 2>&1 || true
+
+log_msg "install_init done (npm install runs in install_callback)"
+exit 0

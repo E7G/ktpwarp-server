@@ -1,0 +1,11 @@
+#!/bin/bash
+
+ACTION="${wizard_data_action}"
+
+if [ "${ACTION}" = "delete" ] && [ -n "${TRIM_PKGVAR}" ] && [ -d "${TRIM_PKGVAR}" ]; then
+  if [ "${TRIM_PKGVAR}" != "/" ] && [ "${TRIM_PKGVAR}" != "/var/apps" ]; then
+    rm -rf "${TRIM_PKGVAR}"
+  fi
+fi
+
+exit 0

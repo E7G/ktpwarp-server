@@ -1,0 +1,11 @@
+[
+  {
+    "stepTitle": "安装向导",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "欢迎使用 ktpWarp Server。\n\n安装完成后，在桌面或应用中心打开「ktpWarp 配置」填写账号信息并保存，然后启动应用。\n\n也可直接编辑数据目录中的 config.json。"
+      }
+    ]
+  }
+]

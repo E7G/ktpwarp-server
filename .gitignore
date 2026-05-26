@@ -1,4 +1,17 @@
 node_modules
 /dist
-/config.ts
+/config.json
+
+# fpk local build outputs
+/ktpwarp-server.fpk
+/ktpwarp-server_all.fpk
+/fnpack
+/fnpack.exe
+/fpk/app/server/
+/fpk/app/web/*
+!/fpk/app/web/.keep
+!/fpk/app/web/ktpwarp-fnOS-boot.js
+.fpk-build/
+.fpk-check*/
+
 .DS_Store

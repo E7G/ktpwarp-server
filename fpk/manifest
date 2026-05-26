@@ -1,0 +1,18 @@
+appname = ktpwarp-server
+version = 1.3.5-beta
+display_name = ktpWarp Server
+desc = 课堂派自动签到服务端（ktpwarp-server），提供 WebSocket 接入与 Telegram 机器人
+platform = all
+source = thirdparty
+os_min_version = 0.9.0
+maintainer = celesWuff@github
+maintainer_url = https://github.com/celesWuff
+distributor = celesWuff
+distributor_url = https://github.com/celesWuff/ktpwarp-server
+install_dep_apps = nodejs_v22
+service_port = 18451
+desktop_uidir = ui
+desktop_applaunchname = ktpwarp-server.Application
+reloadui = yes
+ctl_stop = true
+
