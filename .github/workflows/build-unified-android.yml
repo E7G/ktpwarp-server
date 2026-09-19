@@ -59,9 +59,17 @@ jobs:
           git checkout 5904e68163973e7c5af2d9b988993d4426927411
           rm -rf .git
           cp config.example.ts config.ts
-          npm install --include=dev --ignore-scripts --no-audit --no-fund
-          rm -rf node_modules/.bin
-          find node_modules -type l -delete || true
+          corepack enable
+          corepack prepare pnpm@10.5.2 --activate
+          pnpm install --frozen-lockfile --ignore-scripts
+
+          # Android AssetManager cannot preserve pnpm symlinks.
+          # Dereference the locked node_modules tree without changing dependency versions.
+          cp -aL node_modules node_modules.flat
+          rm -rf node_modules
+          mv node_modules.flat node_modules
+          rm -rf node_modules/.pnpm node_modules/.bin
+
           cp "$GITHUB_WORKSPACE/android-unified/node-main.js" main.js
 
       - name: Embed original server into Android assets
