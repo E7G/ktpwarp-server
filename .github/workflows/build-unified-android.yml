@@ -31,10 +31,12 @@ jobs:
         shell: bash
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
-          command -v sdkmanager
-          sdkmanager --version
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-33" "build-tools;33.0.2" "ndk;24.0.8215888" "cmake;3.22.1"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER"
+          "$SDKMANAGER" --version
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-33" "build-tools;33.0.2" "ndk;24.0.8215888" "cmake;3.22.1"
 
       - name: Set up Node.js 18
         uses: actions/setup-node@v4
