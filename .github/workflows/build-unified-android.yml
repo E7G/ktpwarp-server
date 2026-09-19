@@ -70,10 +70,19 @@ jobs:
             --config.engine-strict=false \
             --config.node-linker=hoisted
 
-          # Prove the Node 18 runtime can actually load the dependency chain used by
-          # Telegram QR decoding, rather than merely bypassing the engine declaration.
+          # Prove the Node 18 runtime can actually load the Jimp dependency chain,
+          # rather than merely bypassing the engine declaration.
           node -e "require('simple-xml-to-json'); require('jimp'); console.log('Node 18 Jimp smoke test OK')"
-          node -r ts-node/register/transpile-only -e "require('./telegramBot.ts'); console.log('Node 18 ktpWarp module smoke test OK')"
+
+          # Build the unchanged server sources as ESM for the embedded runtime.
+          # @adobe/fetch@4.1.11 is ESM-only, while upstream tsconfig emits CommonJS.
+          cp "$GITHUB_WORKSPACE/android-unified/tsconfig.mobile.json" tsconfig.mobile.json
+          pnpm exec tsc -p tsconfig.mobile.json
+          printf '%s\n' '{"type":"module"}' > dist-mobile/package.json
+
+          # Test the same Node 18 module graph that the APK will load.
+          node --experimental-specifier-resolution=node \
+            -e "import('./dist-mobile/telegramBot.js').then(() => console.log('Node 18 ktpWarp ESM smoke test OK'))"
 
           # AssetManager needs ordinary files/directories, not executable .bin links.
           rm -rf node_modules/.bin
