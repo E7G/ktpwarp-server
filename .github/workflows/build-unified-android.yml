@@ -1,0 +1,125 @@
+name: Build unified Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - unified-android
+    paths:
+      - "android-unified/**"
+      - ".github/workflows/build-unified-android.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout merger repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build components
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager             "platforms;android-33"             "build-tools;33.0.2"             "ndk;24.0.8215888"             "cmake;3.22.1"
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Fetch pinned upstream Android client
+        shell: bash
+        run: |
+          git clone https://github.com/celesWuff/ktpwarp-android.git android-build
+          cd android-build
+          git checkout 7bb7d9c682173d608eae670a995fed1dfbaf1549
+          rm -rf .git
+
+      - name: Fetch pinned upstream server and install its dependencies
+        shell: bash
+        run: |
+          git clone https://github.com/celesWuff/ktpwarp-server.git server-src
+          cd server-src
+          git checkout 5904e68163973e7c5af2d9b988993d4426927411
+          rm -rf .git
+          cp config.example.ts config.ts
+          npm install --include=dev --ignore-scripts --no-audit --no-fund
+          rm -rf node_modules/.bin
+          find node_modules -type l -delete || true
+          cp "$GITHUB_WORKSPACE/android-unified/node-main.js" main.js
+
+      - name: Embed original server into Android assets
+        shell: bash
+        run: |
+          ASSET_DIR="$GITHUB_WORKSPACE/android-build/app/src/main/assets/nodejs-project"
+          rm -rf "$ASSET_DIR"
+          mkdir -p "$ASSET_DIR"
+          cp -a "$GITHUB_WORKSPACE/server-src/." "$ASSET_DIR/"
+
+      - name: Download Node.js Mobile runtime
+        shell: bash
+        run: |
+          rm -rf /tmp/node-mobile /tmp/node-mobile.zip
+          mkdir -p /tmp/node-mobile
+          curl -L --fail --retry 3             -o /tmp/node-mobile.zip             https://github.com/nodejs-mobile/nodejs-mobile/releases/download/v18.20.4/nodejs-mobile-v18.20.4-android.zip
+          unzip -q /tmp/node-mobile.zip -d /tmp/node-mobile
+
+          NODE_HEADER="$(find /tmp/node-mobile -type f -path '*/include/node/node.h' -print -quit)"
+          if [ -z "$NODE_HEADER" ]; then
+            echo "node.h not found in Node.js Mobile archive"
+            find /tmp/node-mobile -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+
+          NODE_ROOT="$(dirname "$(dirname "$(dirname "$NODE_HEADER")")")"
+          echo "Node Mobile root: $NODE_ROOT"
+
+          mkdir -p "$GITHUB_WORKSPACE/android-build/app/libnode"
+          cp -a "$NODE_ROOT/include" "$GITHUB_WORKSPACE/android-build/app/libnode/"
+          cp -a "$NODE_ROOT/bin" "$GITHUB_WORKSPACE/android-build/app/libnode/"
+
+          find "$GITHUB_WORKSPACE/android-build/app/libnode/bin" -name libnode.so -print
+
+      - name: Apply Android integration layer
+        shell: bash
+        run: |
+          cp -a "$GITHUB_WORKSPACE/android-unified/overlay/." "$GITHUB_WORKSPACE/android-build/"
+          cat >> "$GITHUB_WORKSPACE/android-build/app/proguard-rules.pro" <<'EOF'
+          -keep class io.github.celeswuff.ktpwarp.server.NodeServerService { *; }
+          EOF
+
+      - name: Build installable debug APK
+        shell: bash
+        working-directory: android-build
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon clean assembleDebug
+
+      - name: Collect APK
+        shell: bash
+        run: |
+          mkdir -p output
+          find android-build/app/build/outputs/apk -type f -name "*.apk" -print -exec cp {} output/ \;
+          ls -lh output
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ktpwarp-unified-android
+          path: output/*.apk
+          if-no-files-found: error
+          compression-level: 0
