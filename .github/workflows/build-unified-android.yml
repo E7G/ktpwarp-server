@@ -27,14 +27,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android build components
         shell: bash
         run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          command -v sdkmanager
+          sdkmanager --version
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager             "platforms;android-33"             "build-tools;33.0.2"             "ndk;24.0.8215888"             "cmake;3.22.1"
+          sdkmanager "platforms;android-33" "build-tools;33.0.2" "ndk;24.0.8215888" "cmake;3.22.1"
 
       - name: Set up Node.js 18
         uses: actions/setup-node@v4
@@ -75,7 +75,7 @@ jobs:
         run: |
           rm -rf /tmp/node-mobile /tmp/node-mobile.zip
           mkdir -p /tmp/node-mobile
-          curl -L --fail --retry 3             -o /tmp/node-mobile.zip             https://github.com/nodejs-mobile/nodejs-mobile/releases/download/v18.20.4/nodejs-mobile-v18.20.4-android.zip
+          curl -L --fail --retry 3 -o /tmp/node-mobile.zip https://github.com/nodejs-mobile/nodejs-mobile/releases/download/v18.20.4/nodejs-mobile-v18.20.4-android.zip
           unzip -q /tmp/node-mobile.zip -d /tmp/node-mobile
 
           NODE_HEADER="$(find /tmp/node-mobile -type f -path '*/include/node/node.h' -print -quit)"
