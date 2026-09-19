@@ -90,7 +90,11 @@ class NodeServerService : Service() {
             try {
                 val nodeDir = prepareNodeProject(userConfig)
                 val exitCode = startNodeWithArguments(
-                    arrayOf("node", File(nodeDir, "main.js").absolutePath)
+                    arrayOf(
+                        "node",
+                        "--experimental-specifier-resolution=node",
+                        File(nodeDir, "main.js").absolutePath
+                    )
                 )
                 Log.i("KTPWARP-NODE", "Node exited with code $exitCode")
             } catch (t: Throwable) {
