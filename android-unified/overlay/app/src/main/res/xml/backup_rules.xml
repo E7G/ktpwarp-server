@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="file" path="server-config.ts" />
+    <exclude domain="file" path="nodejs-project/" />
+    <exclude domain="file" path="nodejs-project.version" />
+</full-backup-content>

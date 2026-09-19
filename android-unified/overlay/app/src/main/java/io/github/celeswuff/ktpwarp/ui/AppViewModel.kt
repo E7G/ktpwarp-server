@@ -181,7 +181,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun stopLocalServer() {
         disconnect()
-        NodeServerService.stop(getApplication())
+        NodeServerService.stop(getApplication<Application>())
     }
 
     fun skip() {

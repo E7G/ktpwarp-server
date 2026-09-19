@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: unified-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -85,7 +89,7 @@ jobs:
             -e "import('./dist-mobile/telegramBot.js').then(() => console.log('Node 18 ktpWarp ESM smoke test OK'))"
 
           # AssetManager needs ordinary files/directories, not executable .bin links.
-          rm -rf node_modules/.bin
+          find node_modules -type d -name .bin -prune -exec rm -rf {} \;
           if find node_modules -type l -print -quit | grep -q .; then
             echo "Unexpected symlink remains in hoisted node_modules:"
             find node_modules -type l -print | head -50
