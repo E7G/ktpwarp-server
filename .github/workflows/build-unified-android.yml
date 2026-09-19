@@ -59,8 +59,8 @@ jobs:
           git checkout 5904e68163973e7c5af2d9b988993d4426927411
           rm -rf .git
           cp config.example.ts config.ts
-          corepack enable
-          corepack prepare pnpm@10.5.2 --activate
+          npm install -g pnpm@10.5.2 --no-audit --no-fund
+          pnpm --version
           pnpm install --frozen-lockfile --ignore-scripts
 
           # Android AssetManager cannot preserve pnpm symlinks.
