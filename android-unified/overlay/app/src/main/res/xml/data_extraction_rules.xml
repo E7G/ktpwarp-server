@@ -4,10 +4,12 @@
         <exclude domain="file" path="server-config.ts" />
         <exclude domain="file" path="nodejs-project/" />
         <exclude domain="file" path="nodejs-project.version" />
+        <exclude domain="file" path="ktpwarp-server.log" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="server-config.ts" />
         <exclude domain="file" path="nodejs-project/" />
         <exclude domain="file" path="nodejs-project.version" />
+        <exclude domain="file" path="ktpwarp-server.log" />
     </device-transfer>
 </data-extraction-rules>

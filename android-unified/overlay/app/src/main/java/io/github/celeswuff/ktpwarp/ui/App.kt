@@ -82,6 +82,8 @@ fun AppContent(
             configured = viewModel.localServerConfigured,
             configText = viewModel.localConfigText,
             websocketAddress = viewModel.localServerAddress,
+            status = viewModel.localServerStatus,
+            serverLog = viewModel.localServerLog,
             onStart = viewModel::startLocalServer,
             onStop = viewModel::stopLocalServer,
             onSaveAndStart = viewModel::saveAndRestartLocalServer

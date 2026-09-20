@@ -14,15 +14,31 @@ int pipe_stderr[2];
 pthread_t thread_stdout;
 pthread_t thread_stderr;
 bool redirect_started = false;
+FILE *log_file = nullptr;
+pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 const char *TAG = "KTPWARP-NODE";
+
+void write_output(int priority, const char *buffer, size_t size) {
+    std::string message(buffer, size);
+    while (!message.empty() && (message.back() == '\n' || message.back() == '\r')) {
+        message.pop_back();
+    }
+    if (!message.empty()) __android_log_write(priority, TAG, message.c_str());
+
+    if (log_file != nullptr && size > 0) {
+        pthread_mutex_lock(&log_mutex);
+        fwrite(buffer, 1, size, log_file);
+        if (buffer[size - 1] != '\n') fputc('\n', log_file);
+        fflush(log_file);
+        pthread_mutex_unlock(&log_mutex);
+    }
+}
 
 void *stderr_thread(void *) {
     ssize_t size;
     char buffer[4096];
-    while ((size = read(pipe_stderr[0], buffer, sizeof(buffer) - 1)) > 0) {
-        if (buffer[size - 1] == '\n') --size;
-        buffer[size] = 0;
-        __android_log_write(ANDROID_LOG_ERROR, TAG, buffer);
+    while ((size = read(pipe_stderr[0], buffer, sizeof(buffer))) > 0) {
+        write_output(ANDROID_LOG_ERROR, buffer, static_cast<size_t>(size));
     }
     return nullptr;
 }
@@ -30,17 +46,20 @@ void *stderr_thread(void *) {
 void *stdout_thread(void *) {
     ssize_t size;
     char buffer[4096];
-    while ((size = read(pipe_stdout[0], buffer, sizeof(buffer) - 1)) > 0) {
-        if (buffer[size - 1] == '\n') --size;
-        buffer[size] = 0;
-        __android_log_write(ANDROID_LOG_INFO, TAG, buffer);
+    while ((size = read(pipe_stdout[0], buffer, sizeof(buffer))) > 0) {
+        write_output(ANDROID_LOG_INFO, buffer, static_cast<size_t>(size));
     }
     return nullptr;
 }
 
-int redirect_stdio() {
+int redirect_stdio(const char *log_path) {
     if (redirect_started) return 0;
     redirect_started = true;
+
+    if (log_path != nullptr && log_path[0] != '\0') {
+        log_file = fopen(log_path, "a");
+        if (log_file != nullptr) setvbuf(log_file, nullptr, _IONBF, 0);
+    }
 
     setvbuf(stdout, nullptr, _IONBF, 0);
     setvbuf(stderr, nullptr, _IONBF, 0);
@@ -51,7 +70,6 @@ int redirect_stdio() {
 
     if (pthread_create(&thread_stdout, nullptr, stdout_thread, nullptr) != 0) return -1;
     pthread_detach(thread_stdout);
-
     if (pthread_create(&thread_stderr, nullptr, stderr_thread, nullptr) != 0) return -1;
     pthread_detach(thread_stderr);
 
@@ -64,7 +82,8 @@ JNIEXPORT jint JNICALL
 Java_io_github_celeswuff_ktpwarp_server_NodeServerService_startNodeWithArguments(
         JNIEnv *env,
         jobject,
-        jobjectArray arguments) {
+        jobjectArray arguments,
+        jstring logPath) {
 
     const jsize argc = env->GetArrayLength(arguments);
     std::vector<std::string> strings;
@@ -90,11 +109,17 @@ Java_io_github_celeswuff_ktpwarp_server_NodeServerService_startNodeWithArguments
         cursor += strings[i].size() + 1;
     }
 
-    if (redirect_stdio() != 0) {
-        __android_log_write(
-                ANDROID_LOG_ERROR,
-                TAG,
-                "Failed to redirect Node stdout/stderr to logcat.");
+    const char *log_path_chars = nullptr;
+    if (logPath != nullptr) log_path_chars = env->GetStringUTFChars(logPath, nullptr);
+
+    const int redirect_result = redirect_stdio(log_path_chars);
+
+    if (logPath != nullptr && log_path_chars != nullptr) {
+        env->ReleaseStringUTFChars(logPath, log_path_chars);
+    }
+
+    if (redirect_result != 0) {
+        __android_log_write(ANDROID_LOG_ERROR, TAG, "Failed to redirect Node stdout/stderr.");
     }
 
     return static_cast<jint>(node::Start(argc, argv.data()));

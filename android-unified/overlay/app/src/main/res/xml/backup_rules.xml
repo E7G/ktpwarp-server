@@ -3,4 +3,5 @@
     <exclude domain="file" path="server-config.ts" />
     <exclude domain="file" path="nodejs-project/" />
     <exclude domain="file" path="nodejs-project.version" />
+    <exclude domain="file" path="ktpwarp-server.log" />
 </full-backup-content>

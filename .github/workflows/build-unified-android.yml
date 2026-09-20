@@ -98,13 +98,18 @@ jobs:
 
           cp "$GITHUB_WORKSPACE/android-unified/node-main.js" main.js
 
-      - name: Embed original server into Android assets
+      - name: Pack original server into a single Android asset
         shell: bash
         run: |
-          ASSET_DIR="$GITHUB_WORKSPACE/android-build/app/src/main/assets/nodejs-project"
-          rm -rf "$ASSET_DIR"
-          mkdir -p "$ASSET_DIR"
-          cp -a "$GITHUB_WORKSPACE/server-src/." "$ASSET_DIR/"
+          ASSET_ROOT="$GITHUB_WORKSPACE/android-build/app/src/main/assets"
+          rm -rf "$ASSET_ROOT/nodejs-project" "$ASSET_ROOT/nodejs-project.zip"
+          mkdir -p "$ASSET_ROOT"
+          cp "$GITHUB_WORKSPACE/server-src/config.example.ts" "$ASSET_ROOT/nodejs-config.example.ts"
+          (
+            cd "$GITHUB_WORKSPACE/server-src"
+            zip -q -r "$ASSET_ROOT/nodejs-project.zip" .
+          )
+          ls -lh "$ASSET_ROOT/nodejs-project.zip" "$ASSET_ROOT/nodejs-config.example.ts"
 
       - name: Download Node.js Mobile runtime
         shell: bash

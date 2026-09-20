@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -33,54 +34,54 @@ fun AppLocalServerCard(
     configured: Boolean,
     configText: String,
     websocketAddress: String,
+    status: String,
+    serverLog: String,
     onStart: () -> Unit,
     onStop: () -> Unit,
-    onSaveAndStart: (config: String, websocketAddress: String) -> Unit,
+    onSaveAndStart: (config: String) -> Unit,
 ) {
     var showEditor by remember { mutableStateOf(false) }
+    var showLog by remember { mutableStateOf(false) }
     var draftConfig by remember(configText) { mutableStateOf(configText) }
-    var draftAddress by remember(websocketAddress) { mutableStateOf(websocketAddress) }
 
     OutlinedCard(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-        ),
+        modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
     ) {
-        Column(
-            Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = "内置服务器", style = MaterialTheme.typography.headlineSmall)
 
-            Text(
-                if (configured) {
-                    "已配置。server 会在独立后台进程中运行，Android 客户端直接连接本机。"
-                } else {
-                    "首次使用请先编辑原版 ktpwarp-server config.ts。"
-                }
-            )
+            Text(if (configured) "状态：" + status else "首次使用请先编辑原版 ktpwarp-server config.ts。")
+
+            if (configured) {
+                Text(
+                    "本机地址：" + websocketAddress,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    "地址会根据 config.ts 的端口、路径和 TLS 设置自动生成，不需要重复填写。",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
 
             Text(
-                "远程服务器连接功能仍保留在上面的“状态”卡片中。",
+                "原 ktpwarp-server 会先登录课堂派，登录成功后才创建 WebSocket。",
                 style = MaterialTheme.typography.bodySmall
             )
 
             Button(onClick = onStart, enabled = configured) {
                 Text("启动并连接内置服务器")
             }
-
             Button(onClick = {
                 draftConfig = configText
-                draftAddress = websocketAddress
                 showEditor = true
             }) {
                 Text(if (configured) "编辑配置" else "首次配置")
             }
-
+            Button(onClick = { showLog = true }, enabled = serverLog.isNotBlank()) {
+                Text("查看启动日志")
+            }
             Button(onClick = onStop) {
                 Text("停止内置服务器")
             }
@@ -94,32 +95,16 @@ fun AppLocalServerCard(
             title = { Text("内置 ktpwarp-server 配置") },
             text = {
                 Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 600.dp)
-                        .verticalScroll(rememberScrollState()),
+                    Modifier.fillMaxWidth().heightIn(max = 600.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("本机 WebSocket 地址")
-                    TextField(
-                        value = draftAddress,
-                        onValueChange = { draftAddress = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = {
-                            Text("ws://127.0.0.1:11451/...")
-                        }
-                    )
-
                     Text(
-                        "config.ts（就是原 ktpwarp-server 的配置文件；所有原功能选项都保留）"
+                        "直接编辑原版 config.ts。App 会自动读取端口、路径和 TLS 设置。"
                     )
                     TextField(
                         value = draftConfig,
                         onValueChange = { draftConfig = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 360.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 420.dp),
                         textStyle = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace
                         )
@@ -129,15 +114,31 @@ fun AppLocalServerCard(
             confirmButton = {
                 TextButton(onClick = {
                     showEditor = false
-                    onSaveAndStart(draftConfig, draftAddress)
-                }) {
-                    Text("保存并启动")
-                }
+                    onSaveAndStart(draftConfig)
+                }) { Text("保存并启动") }
             },
             dismissButton = {
-                TextButton(onClick = { showEditor = false }) {
-                    Text("取消")
+                TextButton(onClick = { showEditor = false }) { Text("取消") }
+            }
+        )
+    }
+
+    if (showLog) {
+        AlertDialog(
+            onDismissRequest = { showLog = false },
+            title = { Text("内置 server 启动日志") },
+            text = {
+                SelectionContainer {
+                    Text(
+                        text = if (serverLog.isBlank()) "暂无日志" else serverLog,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace
+                    )
                 }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLog = false }) { Text("关闭") }
             }
         )
     }
